@@ -1,0 +1,169 @@
+Setup ElasticSearchBundle
+-------------------------
+
+Download ElasticsearchBundle. This version ``"~0.1"`` can be changed to newer.
+
+    cd project
+    composer require ongr/elasticsearch-bundle "~0.1"
+    composer update
+
+Open Text editor and navigate to ``Sites/project/app/AppKernel.php``. Enable ElasticSearchBundle by adding this one line:
+
+    <?php
+    // app/AppKernel.php
+
+    public function registerBundles()
+    {
+        $bundles = array(
+            // ...
+            new ONGR\ElasticsearchBundle\ONGRElasticsearchBundle(),
+        );
+    }
+
+Go to ``app/config/config.yml``, add configuration at the very bottom: 
+(indentation is very important, use 4 spaces as a tab)
+
+    ongr_elasticsearch:
+        connections:
+            default:
+                hosts:
+                    - { host: 127.0.0.1:9200 }
+                index_name: product
+                settings:
+                    refresh_interval: -1
+                    number_of_replicas: 1
+        managers:
+            default:
+                connection: default
+                mappings:
+                    - AppBundle
+
+Creating Database for ElasticSearch
+-----------------------------------
+
+Go to ``src/AppBundle`` and create new Folder ``Document`. It must be named as "Document". ONGR points to exactly this directory as default.
+
+Go to ``src/AppBundle/Document`` and create new File ``Product.php``.
+Open this Product.php and paste that:
+
+    <?php
+        namespace AppBundle\Document;
+
+        use ONGR\ElasticsearchBundle\Annotation as ES;
+        use ONGR\ElasticsearchBundle\Document\AbstractDocument;
+
+        /**
+         * @ES\Document(type="product")
+         */
+        class Product extends AbstractDocument
+        {
+            /**
+             * @var integer
+             *
+             * @ES\Property(name="stock", type="integer")
+             */
+            public $stock;
+
+            /**
+             * @var string
+             *
+             * @ES\Property(name="flower", type="string")
+             */
+            public $flower;
+
+            /**
+             * @var string
+             *
+             * @ES\Property(name="place", type="string")
+             */
+            public $place;
+        }
+
+Open terminal, locate to your project root directory (`cd ~/Sites/project`) and create new index (means Database)
+
+    app/console ongr:es:index:create
+
+Adding data to ElasticSearch
+----------------------------
+
+Go to ``src/AppBundle`` and create new Folder ``Data``.
+
+Go to ``src/AppBundle/Data`` and create new File ``items.json``.
+Paste this data there:
+
+    [
+      {"count":25,"date":"2015-04-08T14:46:21+0200"},
+      {"_type":"product","_id":"1","_source":{"flower":"Amaryllis","place":"German", "stock": 5}},
+      {"_type":"product","_id":"2","_source":{"flower":"Amaryllis","place":"England", "stock": 2}},
+      {"_type":"product","_id":"3","_source":{"flower":"Amaryllis","place":"Greece", "stock": 6}},
+      {"_type":"product","_id":"4","_source":{"flower":"Amaryllis","place":"Portugal", "stock": 15}},
+      {"_type":"product","_id":"5","_source":{"flower":"Amaryllis","place":"French", "stock": 4}},
+      {"_type":"product","_id":"6","_source":{"flower":"Clover","place":"German", "stock": 1}},
+      {"_type":"product","_id":"7","_source":{"flower":"Clover","place":"England", "stock": 27}},
+      {"_type":"product","_id":"8","_source":{"flower":"Clover","place":"Greece", "stock": 14}},
+      {"_type":"product","_id":"9","_source":{"flower":"Clover","place":"Portugal", "stock": 9}},
+      {"_type":"product","_id":"10","_source":{"flower":"Clover","place":"French", "stock": 11}},
+      {"_type":"product","_id":"11","_source":{"flower":"Bluebell","place":"German", "stock": 1}},
+      {"_type":"product","_id":"12","_source":{"flower":"Bluebell","place":"England", "stock": 0}},
+      {"_type":"product","_id":"13","_source":{"flower":"Bluebell","place":"Greece", "stock": 4}},
+      {"_type":"product","_id":"14","_source":{"flower":"Bluebell","place":"Portugal", "stock": 45}},
+      {"_type":"product","_id":"15","_source":{"flower":"Bluebell","place":"French", "stock": 1}},
+      {"_type":"product","_id":"16","_source":{"flower":"Iris","place":"German", "stock": 33}},
+      {"_type":"product","_id":"17","_source":{"flower":"Iris","place":"England", "stock": 22}},
+      {"_type":"product","_id":"18","_source":{"flower":"Iris","place":"Greece", "stock": 11}},
+      {"_type":"product","_id":"19","_source":{"flower":"Iris","place":"Portugal", "stock": 5}},
+      {"_type":"product","_id":"20","_source":{"flower":"Iris","place":"French", "stock": 20}},
+      {"_type":"product","_id":"21","_source":{"flower":"Foxglove","place":"German", "stock": 14}},
+      {"_type":"product","_id":"22","_source":{"flower":"Foxglove","place":"England", "stock": 13}},
+      {"_type":"product","_id":"23","_source":{"flower":"Foxglove","place":"Greece", "stock": 2}},
+      {"_type":"product","_id":"24","_source":{"flower":"Foxglove","place":"Portugal", "stock": 7}},
+      {"_type":"product","_id":"25","_source":{"flower":"Foxglove","place":"French", "stock": 8}}
+    ]
+
+Open terminal and update your index with this data by typing this:
+
+    app/console ongr:es:index:import --raw src/AppBundle/Data/items.json
+
+You can now locate to `localhost:9200/product/product/1` and you should see your first product. 
+
+If it says `This webpage is not available` then you need to turn on elasticsearch. Open terminal, locate to elasticsearch folder (you should have downloaded it  on 1st step), type `./bin/elasticsearch` and dont close this console window, you can minimize it.
+
+ElasticSearch comparison to MySQL: index = Database, type = Table. 
+
+In this example we have created 25 Tables (all named product) inside one Database (named product).
+
+Getting data from ElasticSearch
+-------------------------------
+
+Go to ``src/AppBundle/Controller/WelcomeController.php``. Make it like that:
+
+    <?php
+    
+        namespace AppBundle\Controller;
+
+        use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+
+        class WelcomeController extends Controller
+        {
+            public function indexAction()
+            {
+                $manager = $this->get("es.manager");
+                $repository = $manager->getRepository('AppBundle:Product');
+                $product = $repository->find(1);
+
+                return $this->render('AppBundle:Welcome:index.html.twig', array('product' => $product));
+            }
+        }
+
+Go to ``src/AppBundle/Resources/views/Welcome/index.html.twig``, delete everything and make it like that:
+
+    {% extends '::base.html.twig' %}
+    {% block body -%}
+        My product is: {{ dump(product) }}
+    {% endblock %}
+
+Open terminal and launch your server:
+
+    app/console server:run
+
+Go to `localhost:8000` and you should see your first product.
