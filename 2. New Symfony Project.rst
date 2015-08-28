@@ -1,0 +1,83 @@
+Create new Symfony project
+--------------------------
+Open Terminal, go to your working directory or create new
+
+    cd ~
+    mkdir Sites
+    cd Sites
+
+Create new Symfony project, named 'project'
+
+    composer create-project symfony/framework-standard-edition project "2.7.*"
+
+Don't install AcmeDemoBundle. For everything else press Enter
+
+Run `composer install`.
+
+Make app/config/routing.yml: ( ! important )
+
+    app:
+        resource: "@AppBundle/Resources/config/routing.yml"
+
+Create src/AppBundle/Resources/config/routing.yml:
+
+    home:
+      path: /
+      defaults: { _controller: AppBundle:Default:index }
+
+Make Controller/DefaultController:
+
+    <?php
+    
+    namespace AppBundle\Controller;
+    use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+    
+    class DefaultController extends Controller
+    {
+        public function indexAction()
+        {
+            return $this->render('AppBundle:Default:index.html.twig');
+        }
+    }
+
+Make src/AppBundle/Resources/views/Default/index.html.twig:
+
+    {% extends "::base.html.twig" %}
+    
+    {% block body %}
+    homepage
+    {% endblock %}
+
+
+
+to AppBundle add new folder `DependencyInjection' add file:
+
+    <?php
+    
+    namespace AppBundle\DependencyInjection;
+    
+    use Symfony\Component\Config\FileLocator;
+    use Symfony\Component\DependencyInjection\ContainerBuilder;
+    use Symfony\Component\DependencyInjection\Extension\Extension;
+    use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+    
+    class AppExtension extends Extension
+    {
+        /**
+         * {@inheritdoc}
+         */
+        public function load(array $config, ContainerBuilder $container)
+        {
+            $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+            $loader->load('services.yml');
+        }
+    }
+
+
+If you use phpstorm
+-------------------
+
+on PHPSTORM go to File->settings->Other settings->Symfony Plugin
+
+	Enable Plugin for this Project
+	Highlight services
